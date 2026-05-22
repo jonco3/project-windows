@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>foxcub</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <h1>foxcub</h1>
+    </header>
+
+    <form id="new-form">
+      <input
+        id="new-name"
+        type="text"
+        placeholder="Project name"
+        autocomplete="off"
+        autofocus
+      />
+      <button id="new-btn" type="submit">New</button>
+    </form>
+
+    <section>
+      <h2>Open</h2>
+      <ul id="open-list" class="project-list"></ul>
+      <p id="open-empty" class="empty" hidden>No open projects</p>
+    </section>
+
+    <section>
+      <h2>Closed</h2>
+      <ul id="closed-list" class="project-list"></ul>
+      <p id="closed-empty" class="empty" hidden>No closed projects</p>
+    </section>
+
+    <p id="error" class="error" hidden></p>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

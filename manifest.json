@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "foxcub",
+  "version": "0.1.0",
+  "description": "Manage browsing as named project windows: create, list, and restore them with their saved tabs.",
+  "permissions": ["tabs", "storage"],
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icons/foxcub.svg",
+    "default_title": "foxcub"
+  },
+  "icons": {
+    "48": "icons/foxcub.svg",
+    "96": "icons/foxcub.svg"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "foxcub@local",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    }
+  }
+}

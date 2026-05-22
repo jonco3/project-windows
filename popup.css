@@ -1,0 +1,142 @@
+:root {
+  --fg: #1a1a1a;
+  --muted: #6b6b6b;
+  --bg: #ffffff;
+  --row-hover: #f0f0f0;
+  --accent: #d9622a;
+  --border: #e0e0e0;
+  --error: #b00020;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fg: #f0f0f0;
+    --muted: #a0a0a0;
+    --bg: #222;
+    --row-hover: #333;
+    --border: #444;
+  }
+}
+
+body {
+  width: 280px;
+  margin: 0;
+  padding: 8px;
+  font: 13px/1.4 system-ui, sans-serif;
+  color: var(--fg);
+  background: var(--bg);
+}
+
+header h1 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+#new-form {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+#new-name {
+  flex: 1;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+#new-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+}
+
+#new-btn:hover {
+  filter: brightness(1.1);
+}
+
+section {
+  margin-top: 6px;
+}
+
+section h2 {
+  margin: 4px 0 2px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+}
+
+.project-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.project-list li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.project-list li:hover {
+  background: var(--row-hover);
+}
+
+.project-list .name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-list .count {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.project-list .actions {
+  display: none;
+  gap: 2px;
+}
+
+.project-list li:hover .actions {
+  display: flex;
+}
+
+.project-list .actions button {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  font-size: 11px;
+}
+
+.project-list .actions button:hover {
+  color: var(--fg);
+}
+
+.empty {
+  margin: 2px 6px;
+  font-size: 11px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.error {
+  margin: 6px 0 0;
+  color: var(--error);
+  font-size: 11px;
+}
