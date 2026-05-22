@@ -3,6 +3,11 @@
 const STORAGE_KEY = "foxcub.projects";
 const SCHEMA_KEY = "foxcub.schemaVersion";
 const CURRENT_SCHEMA = 1;
+// Sessions key used to tag a window as belonging to a project. The value is
+// the project's UUID. Tags survive window close and Firefox restart via
+// session restore, which lets us re-associate windows with projects on
+// startup even though window IDs are not stable across restarts.
+const WINDOW_TAG = "foxcub.projectId";
 
 // Serialise all storage writes through a single promise chain so that
 // concurrent events (rapid tab changes, close-then-restore, etc.) cannot
@@ -74,6 +79,13 @@ async function createProject(name) {
     snapshotAt: 0,
   };
 
+  // Tag the window before persisting the windowId cache: if we crash between
+  // these two steps, reconcile() will still recover the association from the
+  // tag on the next startup.
+  try {
+    await browser.sessions.setWindowValue(win.id, WINDOW_TAG, project.id);
+  } catch {}
+
   await withWrite(async () => {
     const projects = await loadProjects();
     projects.push(project);
@@ -138,6 +150,9 @@ async function restoreProject(id) {
     } catch {
       win = await browser.windows.create({ url: "about:blank" });
     }
+    try {
+      await browser.sessions.setWindowValue(win.id, WINDOW_TAG, project.id);
+    } catch {}
     project.windowId = win.id;
     await saveProjects(projects);
 
@@ -240,22 +255,70 @@ browser.tabs.onDetached.addListener((_tabId, detachInfo) =>
   scheduleSnapshot(detachInfo.oldWindowId),
 );
 
-browser.runtime.onStartup.addListener(() => {
-  withWrite(async () => {
+// Walk all current windows, read their foxcub tag, and rebuild each
+// project's windowId from those tags. Replaces the older "null everything on
+// startup" approach. Session-restored windows that carry their tag get
+// re-associated automatically.
+async function reconcile() {
+  return withWrite(async () => {
     const projects = await loadProjects();
+    if (projects.length === 0) return;
+
+    const windows = await browser.windows.getAll();
+    const tagged = new Map(); // projectId -> windowId
+    for (const w of windows) {
+      let pid;
+      try {
+        pid = await browser.sessions.getWindowValue(w.id, WINDOW_TAG);
+      } catch {
+        continue;
+      }
+      if (pid && !tagged.has(pid)) tagged.set(pid, w.id);
+    }
+
     let dirty = false;
     for (const p of projects) {
-      if (p.windowId !== null) {
-        p.windowId = null;
+      const wid = tagged.has(p.id) ? tagged.get(p.id) : null;
+      if (p.windowId !== wid) {
+        p.windowId = wid;
         dirty = true;
       }
     }
     if (dirty) await saveProjects(projects);
+
+    // Fire-and-forget fresh snapshot for each re-associated window.
+    for (const p of projects) {
+      if (p.windowId !== null) scheduleSnapshot(p.windowId);
+    }
   });
+}
+
+browser.runtime.onStartup.addListener(reconcile);
+
+// Catches windows that Firefox session-restores after the extension has
+// already loaded (the onStartup reconcile may run before they appear).
+browser.windows.onCreated.addListener(async (window) => {
+  let pid;
+  try {
+    pid = await browser.sessions.getWindowValue(window.id, WINDOW_TAG);
+  } catch {
+    return;
+  }
+  if (!pid) return;
+
+  await withWrite(async () => {
+    const projects = await loadProjects();
+    const p = projects.find((x) => x.id === pid);
+    if (!p) return;
+    if (p.windowId === window.id) return;
+    p.windowId = window.id;
+    await saveProjects(projects);
+  });
+  scheduleSnapshot(window.id);
 });
 
-browser.runtime.onInstalled.addListener(() => {
-  withWrite(async () => {
+browser.runtime.onInstalled.addListener(async () => {
+  await withWrite(async () => {
     const stored = await browser.storage.local.get([STORAGE_KEY, SCHEMA_KEY]);
     const patch = {};
     if (!stored[STORAGE_KEY]) patch[STORAGE_KEY] = [];
@@ -264,6 +327,7 @@ browser.runtime.onInstalled.addListener(() => {
       await browser.storage.local.set(patch);
     }
   });
+  await reconcile();
 });
 
 browser.runtime.onMessage.addListener((msg) => {

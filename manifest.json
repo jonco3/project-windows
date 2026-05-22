@@ -3,7 +3,7 @@
   "name": "foxcub",
   "version": "0.1.0",
   "description": "Manage browsing as named project windows: create, list, and restore them with their saved tabs.",
-  "permissions": ["tabs", "storage"],
+  "permissions": ["tabs", "storage", "sessions"],
   "background": {
     "scripts": ["background.js"]
   },

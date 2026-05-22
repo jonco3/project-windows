@@ -33,9 +33,9 @@ share the same name without confusion in storage.
 
 Three pieces:
 
-1. **`manifest.json`** — declares MV3, `tabs` + `storage` permissions, the
-   background script, the action popup, and an SVG icon. No host permissions
-   are needed (see *Permissions* below).
+1. **`manifest.json`** — declares MV3, `tabs` + `storage` + `sessions`
+   permissions, the background script, the action popup, and an SVG icon. No
+   host permissions are needed (see *Permissions* below).
 2. **`background.js`** — the event-page background. Owns all storage I/O,
    listens to window/tab lifecycle events, and serves the popup over
    `runtime.onMessage`.
@@ -84,8 +84,11 @@ so concurrent events cannot interleave read-modify-write cycles.
 ## Lifecycle
 
 **Create.** `createProject({name})` opens a new window with no URL (Firefox's
-default new-tab page), records a `Project` with that window's `id`, and
-triggers an initial snapshot.
+default new-tab page), tags the window with the project's UUID via
+`browser.sessions.setWindowValue(windowId, "foxcub.projectId", id)`, records
+a `Project` with that window's `id`, and triggers an initial snapshot. The
+session-API tag is the source of truth for window-to-project association;
+the `windowId` in storage is just a cache for fast lookup in event handlers.
 
 **Maintain the snapshot.** While a project window is open, the background
 listens to:
@@ -116,10 +119,12 @@ Given a project with `tabs = [{url, pinned}, ...]`:
 
 1. `browser.windows.create({url: tabs[0].url})` — creates a window with
    exactly one tab seeded to the first saved URL.
-2. Immediately persist `project.windowId = win.id` so a mid-restore background
-   eviction still leaves the window associated.
-3. If the first tab was pinned, `tabs.update(firstTab.id, {pinned: true})`.
-4. For each remaining saved tab, **sequentially** await
+2. Tag the new window with `sessions.setWindowValue(win.id,
+   "foxcub.projectId", project.id)` so it survives close/restart.
+3. Persist `project.windowId = win.id` so a mid-restore background eviction
+   still leaves the window associated.
+4. If the first tab was pinned, `tabs.update(firstTab.id, {pinned: true})`.
+5. For each remaining saved tab, **sequentially** await
    `tabs.create({windowId, url, pinned, active: false})`. Sequential, not
    `Promise.all`, so the new tabs land in the saved order.
 
@@ -134,26 +139,39 @@ through to the restore path.
 
 ## Startup reconciliation
 
-Firefox does not guarantee that window IDs survive a browser restart. On
-`runtime.onStartup`, foxcub walks every project and sets `windowId = null` —
-treating all projects as Closed. The user reopens whichever projects they
-want.
+Firefox does not guarantee that window IDs survive a browser restart, but
+data written via `sessions.setWindowValue` does — Firefox's own session
+restore carries it along when it restores a window. foxcub uses that to
+rebuild the project ↔ window mapping after a restart.
 
-A consequence: if Firefox's session restore brings back the windows that were
-open before shutdown, those windows are *not* re-associated with their
-projects. Restoring a project from the popup will create a *new* window,
-giving you a duplicate. This is a known quirk; see below.
+On `runtime.onStartup` (and `runtime.onInstalled`, which fires on
+reload-during-development), foxcub calls `reconcile()`:
 
-As a defensive measure, every time the background services a message, it
-also verifies each open project's `windowId` with `windows.get` and nulls out
-any that have disappeared.
+1. `windows.getAll()` → for each current window, read
+   `sessions.getWindowValue(windowId, "foxcub.projectId")`.
+2. Build a `projectId → windowId` map from the tags found.
+3. For each project, update its cached `windowId` to whatever the map says
+   (or `null` if no window carries its tag).
+4. Trigger a fresh tab snapshot for each re-associated window so the saved
+   state matches reality (the user may have changed tabs while foxcub was
+   not running).
+
+A second listener on `windows.onCreated` catches the case where Firefox
+restores a tagged window *after* the extension has already finished
+`onStartup` — it reads the tag, associates the project, and snapshots.
+
+The defensive `windows.get` check on every `listProjects` call remains: it
+nulls out any cached `windowId` whose window no longer exists, which
+protects against drift from events the background may have missed while
+unloaded.
 
 ## Known quirks
 
-- **Browser restart with projects open.** Session-restored windows become
-  orphans; restoring a project creates a duplicate window. Future work: at
-  startup, snapshot existing windows' URL multisets and try to match them
-  against the last saved snapshots.
+- **Browser restart with projects open.** Tagged windows that Firefox
+  session-restores are re-associated automatically via the sessions API. If
+  the user has disabled session restore, or clears their session/history
+  data, the tag is lost and the affected projects appear as Closed on next
+  startup — restoring them then creates fresh windows.
 - **Private windows.** Out of scope for v1. Restored windows are always
   non-private regardless of the original.
 - **Privileged URLs.** `about:*`, `view-source:`, `file://*`, and similar
@@ -169,6 +187,9 @@ any that have disappeared.
 
 - `tabs` — required to read `tab.url` reliably for non-extension origins.
 - `storage` — for `browser.storage.local`.
+- `sessions` — for `setWindowValue` / `getWindowValue`, which tag windows
+  with their project UUID so that session-restored windows can be
+  re-associated after a browser restart.
 
 No host permissions (`<all_urls>`, etc.) are needed: foxcub never injects
 content scripts, fetches page content, or reads anything from inside a page.
