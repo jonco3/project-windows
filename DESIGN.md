@@ -17,14 +17,15 @@ no UI surfaces other than the popup.
 
 - **Create a project.** Click the foxcub toolbar button, type a name, hit
   Enter. A new browser window opens; it is now a project window.
-- **Open / focus a project.** The popup shows all projects in two sections:
-  *Open* (currently has a window) and *Closed* (window is gone, state saved).
-  Clicking an Open row focuses that window; clicking a Closed row reopens it.
-- **Close a project.** Just close the window. foxcub notices and moves the
-  project from Open to Closed. The tabs at the moment of close are what get
-  restored later.
-- **Rename / delete.** Closed projects can be renamed or deleted from the popup.
-  Open projects must be closed first before they can be deleted.
+- **Open / focus a project.** The popup shows a single alphabetical list of
+  all projects. Each row carries a small status indicator: a filled dot for
+  projects whose window is currently open, an empty dot for closed ones.
+  Clicking an open row focuses its window; clicking a closed row reopens it.
+- **Close a project.** Just close the window. foxcub notices and the row's
+  status indicator flips to "closed" on next popup open. The tabs at the
+  moment of close are what get restored later.
+- **Rename / delete.** Any project can be renamed from the popup. Delete is
+  only available on closed projects; open ones must be closed first.
 
 A project's identity is its `id` (a UUID), not its name, so two projects can
 share the same name without confusion in storage.

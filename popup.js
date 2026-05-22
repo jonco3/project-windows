@@ -1,9 +1,7 @@
 "use strict";
 
-const openList = document.getElementById("open-list");
-const closedList = document.getElementById("closed-list");
-const openEmpty = document.getElementById("open-empty");
-const closedEmpty = document.getElementById("closed-empty");
+const projectList = document.getElementById("project-list");
+const listEmpty = document.getElementById("list-empty");
 const errorEl = document.getElementById("error");
 const newForm = document.getElementById("new-form");
 const newName = document.getElementById("new-name");
@@ -17,9 +15,18 @@ function showError(text) {
   errorEl.hidden = !text;
 }
 
-function makeRow(project, kind) {
+function makeRow(project) {
+  const open = project.windowId !== null;
+
   const li = document.createElement("li");
   li.dataset.id = project.id;
+  li.classList.add(open ? "is-open" : "is-closed");
+
+  const status = document.createElement("span");
+  status.className = "status";
+  status.textContent = open ? "●" : "○";
+  status.title = open ? "Open" : "Closed";
+  li.appendChild(status);
 
   const name = document.createElement("span");
   name.className = "name";
@@ -32,20 +39,20 @@ function makeRow(project, kind) {
   count.textContent = n === 1 ? "1 tab" : `${n} tabs`;
   li.appendChild(count);
 
-  if (kind === "closed") {
-    const actions = document.createElement("span");
-    actions.className = "actions";
+  const actions = document.createElement("span");
+  actions.className = "actions";
 
-    const renameBtn = document.createElement("button");
-    renameBtn.type = "button";
-    renameBtn.textContent = "rename";
-    renameBtn.title = "Rename project";
-    renameBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      onRename(project);
-    });
-    actions.appendChild(renameBtn);
+  const renameBtn = document.createElement("button");
+  renameBtn.type = "button";
+  renameBtn.textContent = "rename";
+  renameBtn.title = "Rename project";
+  renameBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    onRename(project);
+  });
+  actions.appendChild(renameBtn);
 
+  if (!open) {
     const deleteBtn = document.createElement("button");
     deleteBtn.type = "button";
     deleteBtn.textContent = "delete";
@@ -55,29 +62,29 @@ function makeRow(project, kind) {
       onDelete(project);
     });
     actions.appendChild(deleteBtn);
-
-    li.appendChild(actions);
-
-    li.addEventListener("click", () => onRestore(project));
-  } else {
-    li.addEventListener("click", () => onFocus(project));
   }
+
+  li.appendChild(actions);
+
+  li.addEventListener("click", () =>
+    open ? onFocus(project) : onRestore(project),
+  );
 
   return li;
 }
 
 function render(projects) {
-  openList.replaceChildren();
-  closedList.replaceChildren();
+  projectList.replaceChildren();
 
-  const open = projects.filter((p) => p.windowId !== null);
-  const closed = projects.filter((p) => p.windowId === null);
+  const sorted = projects
+    .slice()
+    .sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+    );
 
-  for (const p of open) openList.appendChild(makeRow(p, "open"));
-  for (const p of closed) closedList.appendChild(makeRow(p, "closed"));
+  for (const p of sorted) projectList.appendChild(makeRow(p));
 
-  openEmpty.hidden = open.length > 0;
-  closedEmpty.hidden = closed.length > 0;
+  listEmpty.hidden = sorted.length > 0;
 }
 
 async function refresh() {

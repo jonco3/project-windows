@@ -66,19 +66,29 @@ section {
   margin-top: 6px;
 }
 
-section h2 {
-  margin: 4px 0 2px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--muted);
-  letter-spacing: 0.05em;
-}
-
 .project-list {
   list-style: none;
   padding: 0;
   margin: 0;
+}
+
+.project-list .status {
+  font-size: 10px;
+  width: 12px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.project-list li.is-open .status {
+  color: var(--accent);
+}
+
+.project-list li.is-closed .status {
+  color: var(--muted);
+}
+
+.project-list li.is-closed .name {
+  color: var(--muted);
 }
 
 .project-list li {
