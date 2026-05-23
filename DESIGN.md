@@ -13,9 +13,8 @@ The extension is intentionally small: a single background event page handles
 state, and a toolbar popup provides the UI. There are no servers, no sync,
 and no UI surfaces other than the popup.
 
-The codebase, repo directory, and internal storage keys use the original
-codename `foxcub` (e.g. `foxcub.projects`, `foxcub.projectId`,
-`foxcub@local`); the user-facing name is **Project Windows**.
+The user-facing name is **Project Windows** and internal identifiers (storage
+keys, sessions tag, gecko ID) use the prefix `projwin`.
 
 ## User model
 
@@ -63,8 +62,8 @@ Message contract (all over `browser.runtime.sendMessage`):
 
 A single key in `browser.storage.local`:
 
-- `"foxcub.projects"` — array of `Project`, in display order
-- `"foxcub.schemaVersion"` — integer, currently `1`
+- `"projwin.projects"` — array of `Project`, in display order
+- `"projwin.schemaVersion"` — integer, currently `1`
 
 ```
 Project {
@@ -90,7 +89,7 @@ so concurrent events cannot interleave read-modify-write cycles.
 
 **Create.** `createProject({name})` opens a new window with no URL (Firefox's
 default new-tab page), tags the window with the project's UUID via
-`browser.sessions.setWindowValue(windowId, "foxcub.projectId", id)`, records
+`browser.sessions.setWindowValue(windowId, "projwin.projectId", id)`, records
 a `Project` with that window's `id`, and triggers an initial snapshot. The
 session-API tag is the source of truth for window-to-project association;
 the `windowId` in storage is just a cache for fast lookup in event handlers.
@@ -125,7 +124,7 @@ Given a project with `tabs = [{url, pinned}, ...]`:
 1. `browser.windows.create({url: tabs[0].url})` — creates a window with
    exactly one tab seeded to the first saved URL.
 2. Tag the new window with `sessions.setWindowValue(win.id,
-   "foxcub.projectId", project.id)` so it survives close/restart.
+   "projwin.projectId", project.id)` so it survives close/restart.
 3. Persist `project.windowId = win.id` so a mid-restore background eviction
    still leaves the window associated.
 4. If the first tab was pinned, `tabs.update(firstTab.id, {pinned: true})`.
@@ -153,7 +152,7 @@ On `runtime.onStartup` (and `runtime.onInstalled`, which fires on
 reload-during-development), the extension calls `reconcile()`:
 
 1. `windows.getAll()` → for each current window, read
-   `sessions.getWindowValue(windowId, "foxcub.projectId")`.
+   `sessions.getWindowValue(windowId, "projwin.projectId")`.
 2. Build a `projectId → windowId` map from the tags found.
 3. For each project, update its cached `windowId` to whatever the map says
    (or `null` if no window carries its tag).

@@ -9,16 +9,16 @@
   },
   "action": {
     "default_popup": "popup.html",
-    "default_icon": "icons/foxcub.svg",
+    "default_icon": "icons/projwin.svg",
     "default_title": "Project Windows"
   },
   "icons": {
-    "48": "icons/foxcub.svg",
-    "96": "icons/foxcub.svg"
+    "48": "icons/projwin.svg",
+    "96": "icons/projwin.svg"
   },
   "browser_specific_settings": {
     "gecko": {
-      "id": "foxcub@local",
+      "id": "projwin@local",
       "strict_min_version": "140.0",
       "data_collection_permissions": {
         "required": ["none"]

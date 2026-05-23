@@ -1,13 +1,13 @@
 "use strict";
 
-const STORAGE_KEY = "foxcub.projects";
-const SCHEMA_KEY = "foxcub.schemaVersion";
+const STORAGE_KEY = "projwin.projects";
+const SCHEMA_KEY = "projwin.schemaVersion";
 const CURRENT_SCHEMA = 1;
 // Sessions key used to tag a window as belonging to a project. The value is
 // the project's UUID. Tags survive window close and Firefox restart via
 // session restore, which lets us re-associate windows with projects on
 // startup even though window IDs are not stable across restarts.
-const WINDOW_TAG = "foxcub.projectId";
+const WINDOW_TAG = "projwin.projectId";
 
 // Serialise all storage writes through a single promise chain so that
 // concurrent events (rapid tab changes, close-then-restore, etc.) cannot
@@ -255,7 +255,7 @@ browser.tabs.onDetached.addListener((_tabId, detachInfo) =>
   scheduleSnapshot(detachInfo.oldWindowId),
 );
 
-// Walk all current windows, read their foxcub tag, and rebuild each
+// Walk all current windows, read their projwin tag, and rebuild each
 // project's windowId from those tags. Replaces the older "null everything on
 // startup" approach. Session-restored windows that carry their tag get
 // re-associated automatically.
