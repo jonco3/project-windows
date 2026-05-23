@@ -1,7 +1,7 @@
-foxcub
-======
+Project Windows
+===============
 
-foxcub is a Firefox extension to help manage browsing windows:
+Project Windows is a Firefox extension to help manage browsing windows:
  - adds an option to create a new 'project' window with a specified name
  - there's a menu of project windows
  - when such windows are closed their tab state is saved somewhere

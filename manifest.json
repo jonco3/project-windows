@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "foxcub",
+  "name": "Project Windows",
   "version": "0.1.0",
   "description": "Manage browsing as named project windows: create, list, and restore them with their saved tabs.",
   "permissions": ["tabs", "storage", "sessions"],
@@ -10,7 +10,7 @@
   "action": {
     "default_popup": "popup.html",
     "default_icon": "icons/foxcub.svg",
-    "default_title": "foxcub"
+    "default_title": "Project Windows"
   },
   "icons": {
     "48": "icons/foxcub.svg",

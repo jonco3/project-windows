@@ -1,27 +1,31 @@
-foxcub — Design
-===============
+Project Windows — Design
+========================
 
 ## Overview
 
-foxcub is a Firefox WebExtension (Manifest V3) that lets you organise your
-browsing into named **project windows**. A project is a window with a name; its
-list of tabs is persisted whenever it changes. When you close a project's
-window, the saved tab state remains so you can reopen the window later with the
-same tabs (same URLs, same order, same pinned status).
+Project Windows is a Firefox WebExtension (Manifest V3) that lets you
+organise your browsing into named **project windows**. A project is a window
+with a name; its list of tabs is persisted whenever it changes. When you
+close a project's window, the saved tab state remains so you can reopen the
+window later with the same tabs (same URLs, same order, same pinned status).
 
 The extension is intentionally small: a single background event page handles
-state, and a toolbar popup provides the UI. There are no servers, no sync, and
-no UI surfaces other than the popup.
+state, and a toolbar popup provides the UI. There are no servers, no sync,
+and no UI surfaces other than the popup.
+
+The codebase, repo directory, and internal storage keys use the original
+codename `foxcub` (e.g. `foxcub.projects`, `foxcub.projectId`,
+`foxcub@local`); the user-facing name is **Project Windows**.
 
 ## User model
 
-- **Create a project.** Click the foxcub toolbar button, type a name, hit
+- **Create a project.** Click the Project Windows toolbar button, type a name, hit
   Enter. A new browser window opens; it is now a project window.
 - **Open / focus a project.** The popup shows a single alphabetical list of
   all projects. Each row carries a small status indicator: a filled dot for
   projects whose window is currently open, an empty dot for closed ones.
   Clicking an open row focuses its window; clicking a closed row reopens it.
-- **Close a project.** Just close the window. foxcub notices and the row's
+- **Close a project.** Just close the window. Project Windows notices and the row's
   status indicator flips to "closed" on next popup open. The tabs at the
   moment of close are what get restored later.
 - **Rename / delete.** Any project can be renamed from the popup. Delete is
@@ -130,11 +134,11 @@ Given a project with `tabs = [{url, pinned}, ...]`:
    `Promise.all`, so the new tabs land in the saved order.
 
 If any `tabs.create` rejects (e.g. a privileged URL like `about:addons`,
-`view-source:`, `file://...`), foxcub substitutes `about:blank` so one bad
+`view-source:`, `file://...`), the extension substitutes `about:blank` so one bad
 URL never aborts a restore.
 
 The same code path also handles "restore an already-open project": if the
-project's `windowId` is non-null and the window still exists, foxcub just
+project's `windowId` is non-null and the window still exists, the extension just
 focuses it; if the window is missing (i.e. the record is stale), it falls
 through to the restore path.
 
@@ -142,11 +146,11 @@ through to the restore path.
 
 Firefox does not guarantee that window IDs survive a browser restart, but
 data written via `sessions.setWindowValue` does — Firefox's own session
-restore carries it along when it restores a window. foxcub uses that to
+restore carries it along when it restores a window. Project Windows uses that to
 rebuild the project ↔ window mapping after a restart.
 
 On `runtime.onStartup` (and `runtime.onInstalled`, which fires on
-reload-during-development), foxcub calls `reconcile()`:
+reload-during-development), the extension calls `reconcile()`:
 
 1. `windows.getAll()` → for each current window, read
    `sessions.getWindowValue(windowId, "foxcub.projectId")`.
@@ -154,7 +158,7 @@ reload-during-development), foxcub calls `reconcile()`:
 3. For each project, update its cached `windowId` to whatever the map says
    (or `null` if no window carries its tag).
 4. Trigger a fresh tab snapshot for each re-associated window so the saved
-   state matches reality (the user may have changed tabs while foxcub was
+   state matches reality (the user may have changed tabs while the extension was
    not running).
 
 A second listener on `windows.onCreated` catches the case where Firefox
@@ -192,7 +196,7 @@ unloaded.
   with their project UUID so that session-restored windows can be
   re-associated after a browser restart.
 
-No host permissions (`<all_urls>`, etc.) are needed: foxcub never injects
+No host permissions (`<all_urls>`, etc.) are needed: the extension never injects
 content scripts, fetches page content, or reads anything from inside a page.
 It only reads metadata exposed by the `tabs` and `windows` APIs and creates
 or focuses windows and tabs.
