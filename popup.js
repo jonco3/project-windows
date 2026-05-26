@@ -128,7 +128,6 @@ async function onRename(project) {
 }
 
 async function onDelete(project) {
-  if (!confirm(`Delete project "${project.name}"?`)) return;
   const resp = await send({ type: "deleteProject", id: project.id });
   if (resp && resp.error) {
     showError(resp.error);
