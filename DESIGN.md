@@ -10,8 +10,8 @@ close a project's window, the saved tab state remains so you can reopen the
 window later with the same tabs (same URLs, same order, same pinned status).
 
 The extension is intentionally small: a single background event page handles
-state, and a toolbar popup provides the UI. There are no servers, no sync,
-and no UI surfaces other than the popup.
+state, a toolbar popup provides the main UI, and a tab context menu lets
+you move tabs between project windows. There are no servers and no sync.
 
 The user-facing name is **Project Windows** and internal identifiers (storage
 keys, sessions tag, gecko ID) use the prefix `projwin`.
@@ -29,6 +29,11 @@ keys, sessions tag, gecko ID) use the prefix `projwin`.
   moment of close are what get restored later.
 - **Rename / delete.** Any project can be renamed from the popup. Delete is
   only available on closed projects; open ones must be closed first.
+- **Move a tab into a project.** Right-click any tab and pick *Move tab to
+  project window* → *(project name)*. The submenu lists every currently
+  open project, plus *New project window…* which spins the tab off into a
+  brand-new project (named after the tab title; rename via the popup).
+  Closed projects do not appear — open them from the popup first.
 
 A project's identity is its `id` (a UUID), not its name, so two projects can
 share the same name without confusion in storage.
@@ -41,8 +46,8 @@ Three pieces:
    permissions, the background script, the action popup, and an SVG icon. No
    host permissions are needed (see *Permissions* below).
 2. **`background.js`** — the event-page background. Owns all storage I/O,
-   listens to window/tab lifecycle events, and serves the popup over
-   `runtime.onMessage`.
+   listens to window/tab lifecycle events, manages the tab context menu,
+   and serves the popup over `runtime.onMessage`.
 3. **`popup.html` / `popup.js` / `popup.css`** — the toolbar popup. Renders the
    project list and dispatches actions to the background. It never touches
    `storage.local` directly; the background is the single writer.
@@ -84,6 +89,17 @@ TabSnapshot {
 
 All storage writes go through a single in-memory promise chain (`saveQueue`)
 so concurrent events cannot interleave read-modify-write cycles.
+
+## Tab context menu
+
+The *Move tab to project window* parent item is created once at module load.
+Its children are populated lazily in `browser.menus.onShown` and committed
+with `browser.menus.refresh()` — Firefox-only APIs, but Project Windows is
+Firefox-only anyway. Building on demand means the project list always
+reflects current state without sprinkling rebuild calls through every
+write path. The IDs of the children added in the previous showing are
+remembered so they can be removed before the next rebuild; the parent
+persists across showings.
 
 ## Lifecycle
 
@@ -194,6 +210,7 @@ unloaded.
 - `sessions` — for `setWindowValue` / `getWindowValue`, which tag windows
   with their project UUID so that session-restored windows can be
   re-associated after a browser restart.
+- `menus` — for the *Move tab to project window* tab context menu.
 
 No host permissions (`<all_urls>`, etc.) are needed: the extension never injects
 content scripts, fetches page content, or reads anything from inside a page.

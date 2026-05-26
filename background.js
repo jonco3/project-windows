@@ -330,6 +330,124 @@ browser.runtime.onInstalled.addListener(async () => {
   await reconcile();
 });
 
+// Tab context menu: "Move tab to project window" submenu listing every open
+// project, plus an item to spin the tab off into a new project window. The
+// parent item is created once at module load; the children are populated
+// lazily by `menus.onShown` so they always reflect current project state.
+
+const MOVE_PARENT_ID = "projwin-move-parent";
+const MOVE_NEW_ID = "projwin-move-new";
+const MOVE_ITEM_PREFIX = "projwin-move:";
+
+// Child item IDs created during the last onShown, so we can remove just
+// those (not the persistent parent) the next time the menu is shown.
+let lastChildIds = [];
+
+if (browser.menus) {
+  browser.menus.create({
+    id: MOVE_PARENT_ID,
+    title: "Move tab to project window",
+    contexts: ["tab"],
+  });
+
+  browser.menus.onShown.addListener(async (info) => {
+    if (!info.menuIds.includes(MOVE_PARENT_ID)) return;
+    await populateMoveMenu();
+    browser.menus.refresh();
+  });
+
+  browser.menus.onClicked.addListener((info, tab) => {
+    if (!tab) return;
+    const id = info.menuItemId;
+    if (id === MOVE_NEW_ID) {
+      moveTabToNewProject(tab);
+    } else if (typeof id === "string" && id.startsWith(MOVE_ITEM_PREFIX)) {
+      moveTabToProject(tab, id.slice(MOVE_ITEM_PREFIX.length));
+    }
+  });
+}
+
+async function populateMoveMenu() {
+  for (const id of lastChildIds) {
+    try {
+      await browser.menus.remove(id);
+    } catch {}
+  }
+  lastChildIds = [];
+
+  const projects = await loadProjects();
+  const open = projects
+    .filter((p) => p.windowId !== null)
+    .sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+    );
+
+  const add = (props) => {
+    const id = browser.menus.create({
+      parentId: MOVE_PARENT_ID,
+      contexts: ["tab"],
+      ...props,
+    });
+    lastChildIds.push(id);
+  };
+
+  if (open.length === 0) {
+    add({ title: "No open project windows", enabled: false });
+  } else {
+    for (const p of open) {
+      add({ id: MOVE_ITEM_PREFIX + p.id, title: p.name });
+    }
+  }
+  add({ type: "separator" });
+  add({ id: MOVE_NEW_ID, title: "New project window…" });
+}
+
+async function moveTabToProject(tab, projectId) {
+  const projects = await loadProjects();
+  const p = projects.find((x) => x.id === projectId);
+  if (!p || p.windowId === null) return;
+  try {
+    await browser.tabs.move(tab.id, { windowId: p.windowId, index: -1 });
+  } catch {
+    return;
+  }
+  try {
+    await browser.windows.update(p.windowId, { focused: true });
+  } catch {}
+}
+
+async function moveTabToNewProject(tab) {
+  const rawTitle = (tab.title || "").trim();
+  const name = (rawTitle || "Untitled").slice(0, 60);
+  const project = {
+    id: crypto.randomUUID(),
+    name,
+    createdAt: Date.now(),
+    windowId: null,
+    tabs: [],
+    snapshotAt: 0,
+  };
+
+  let win;
+  try {
+    win = await browser.windows.create({ tabId: tab.id });
+  } catch {
+    return;
+  }
+  project.windowId = win.id;
+  try {
+    await browser.sessions.setWindowValue(win.id, WINDOW_TAG, project.id);
+  } catch {}
+
+  await withWrite(async () => {
+    const projects = await loadProjects();
+    projects.push(project);
+    await saveProjects(projects);
+  });
+
+  scheduleSnapshot(win.id);
+}
+
 browser.runtime.onMessage.addListener((msg) => {
   switch (msg && msg.type) {
     case "listProjects":
