@@ -15,12 +15,14 @@ function showError(text) {
   errorEl.hidden = !text;
 }
 
-function makeRow(project) {
+function makeRow(project, currentWindowId) {
   const open = project.windowId !== null;
+  const current = open && project.windowId === currentWindowId;
 
   const li = document.createElement("li");
   li.dataset.id = project.id;
   li.classList.add(open ? "is-open" : "is-closed");
+  if (current) li.classList.add("is-current");
 
   const status = document.createElement("span");
   status.className = "status";
@@ -73,7 +75,7 @@ function makeRow(project) {
   return li;
 }
 
-function render(projects) {
+function render(projects, currentWindowId) {
   projectList.replaceChildren();
 
   const sorted = projects
@@ -82,19 +84,24 @@ function render(projects) {
       a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
     );
 
-  for (const p of sorted) projectList.appendChild(makeRow(p));
+  for (const p of sorted) projectList.appendChild(makeRow(p, currentWindowId));
 
   listEmpty.hidden = sorted.length > 0;
 }
 
 async function refresh() {
   showError("");
-  const resp = await send({ type: "listProjects" });
+  const [resp, currentWin] = await Promise.all([
+    send({ type: "listProjects" }),
+    browser.windows
+      .getLastFocused({ windowTypes: ["normal"] })
+      .catch(() => null),
+  ]);
   if (resp && resp.error) {
     showError(resp.error);
     return;
   }
-  render(resp.projects || []);
+  render(resp.projects || [], currentWin ? currentWin.id : null);
 }
 
 async function onFocus(project) {

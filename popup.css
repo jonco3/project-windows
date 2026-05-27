@@ -91,6 +91,10 @@ section {
   color: var(--muted);
 }
 
+.project-list li.is-current .name {
+  font-weight: 700;
+}
+
 .project-list li {
   display: flex;
   align-items: center;
