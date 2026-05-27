@@ -408,11 +408,6 @@ async function moveTabToProject(tab, projectId) {
   if (!p || p.windowId === null) return;
   try {
     await browser.tabs.move(tab.id, { windowId: p.windowId, index: -1 });
-  } catch {
-    return;
-  }
-  try {
-    await browser.windows.update(p.windowId, { focused: true });
   } catch {}
 }
 
