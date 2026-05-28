@@ -33,7 +33,10 @@ keys, sessions tag, gecko ID) use the prefix `projwin`.
   project window* → *(project name)*. The submenu lists every currently
   open project, plus *New project window…* which spins the tab off into a
   brand-new project (named after the tab title; rename via the popup).
-  Closed projects do not appear — open them from the popup first.
+  If multiple tabs are highlighted (Ctrl/Cmd-click or Shift-click in the
+  tab strip) and the right-clicked tab is among them, the whole selection
+  moves, preserving order. Closed projects do not appear — open them from
+  the popup first.
 
 A project's identity is its `id` (a UUID), not its name, so two projects can
 share the same name without confusion in storage.

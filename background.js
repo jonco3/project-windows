@@ -402,16 +402,40 @@ async function populateMoveMenu() {
   add({ id: MOVE_NEW_ID, title: "New project window…" });
 }
 
+// If the right-clicked tab is one of several highlighted (multi-selected)
+// tabs in the same window, the user's intent is to act on the whole
+// selection, matching Firefox's built-in "Move Tab" behaviour.
+async function targetTabs(tab) {
+  let highlighted;
+  try {
+    highlighted = await browser.tabs.query({
+      highlighted: true,
+      windowId: tab.windowId,
+    });
+  } catch {
+    return [tab];
+  }
+  if (highlighted.length > 1 && highlighted.some((t) => t.id === tab.id)) {
+    return highlighted.sort((a, b) => a.index - b.index);
+  }
+  return [tab];
+}
+
 async function moveTabToProject(tab, projectId) {
   const projects = await loadProjects();
   const p = projects.find((x) => x.id === projectId);
   if (!p || p.windowId === null) return;
+  const tabs = await targetTabs(tab);
   try {
-    await browser.tabs.move(tab.id, { windowId: p.windowId, index: -1 });
+    await browser.tabs.move(
+      tabs.map((t) => t.id),
+      { windowId: p.windowId, index: -1 },
+    );
   } catch {}
 }
 
 async function moveTabToNewProject(tab) {
+  const tabs = await targetTabs(tab);
   const rawTitle = (tab.title || "").trim();
   const name = (rawTitle || "Untitled").slice(0, 60);
   const project = {
@@ -423,9 +447,12 @@ async function moveTabToNewProject(tab) {
     snapshotAt: 0,
   };
 
+  // Seed with the first tab by index so the surviving tab order matches the
+  // source window. The right-clicked tab may not be `tabs[0]`, but `tab.title`
+  // is still what names the project.
   let win;
   try {
-    win = await browser.windows.create({ tabId: tab.id });
+    win = await browser.windows.create({ tabId: tabs[0].id });
   } catch {
     return;
   }
@@ -433,6 +460,15 @@ async function moveTabToNewProject(tab) {
   try {
     await browser.sessions.setWindowValue(win.id, WINDOW_TAG, project.id);
   } catch {}
+
+  if (tabs.length > 1) {
+    try {
+      await browser.tabs.move(
+        tabs.slice(1).map((t) => t.id),
+        { windowId: win.id, index: -1 },
+      );
+    } catch {}
+  }
 
   await withWrite(async () => {
     const projects = await loadProjects();
