@@ -352,7 +352,14 @@ if (browser.menus) {
 
   browser.menus.onShown.addListener(async (info) => {
     if (!info.menuIds.includes(MOVE_PARENT_ID)) return;
-    await populateMoveMenu();
+    let currentWindowId = null;
+    try {
+      const w = await browser.windows.getLastFocused({
+        windowTypes: ["normal"],
+      });
+      currentWindowId = w ? w.id : null;
+    } catch {}
+    await populateMoveMenu(currentWindowId);
     browser.menus.refresh();
   });
 
@@ -367,7 +374,7 @@ if (browser.menus) {
   });
 }
 
-async function populateMoveMenu() {
+async function populateMoveMenu(excludeWindowId) {
   for (const id of lastChildIds) {
     try {
       await browser.menus.remove(id);
@@ -377,7 +384,7 @@ async function populateMoveMenu() {
 
   const projects = await loadProjects();
   const open = projects
-    .filter((p) => p.windowId !== null)
+    .filter((p) => p.windowId !== null && p.windowId !== excludeWindowId)
     .sort((a, b) =>
       a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
     );
